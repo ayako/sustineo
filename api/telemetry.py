@@ -81,6 +81,15 @@ def init_tracing(local_tracing: bool = True):
         # Configure Azure Monitor as the Exporter
         app_insights = os.getenv("APPINSIGHTS_CONNECTIONSTRING")
 
+        # If no App Insights connection string is provided, fall back to local tracing
+        if not app_insights:
+            logging.getLogger(__name__).warning(
+                "APPINSIGHTS_CONNECTIONSTRING not set; using local PromptyTracer instead of Azure Monitor exporter."
+            )
+            local_trace = PromptyTracer()
+            Tracer.add("PromptyTracer", local_trace.tracer)
+            return
+
         # Add the Azure exporter to the tracer provider
         resource = Resource(attributes={SERVICE_NAME: "sustineo"})
 

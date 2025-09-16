@@ -16,18 +16,28 @@ def run_with_debugger():
     os.chdir(current_dir)  # Stay in root directory
     os.environ['PYTHONPATH'] = current_dir  # Add root to Python path
     
-    # Launch with debugpy enabled
-    cmd = [
-        venv_python,
-        "-m",
-        "debugpy",
-        "--listen",
-        "0.0.0.0:5678",
-        "-m",
-        "uvicorn",
-        "api.main:app",  # Use full module path
-        "--reload"
-    ]
+    # Launch the server. Enable debugpy only when ENABLE_DEBUGGER=true
+    enable_debugger = os.getenv("ENABLE_DEBUGGER", "false").lower() == "true"
+    if enable_debugger:
+        cmd = [
+            venv_python,
+            "-m",
+            "debugpy",
+            "--listen",
+            "0.0.0.0:5678",
+            "-m",
+            "uvicorn",
+            "api.main:app",  # Use full module path
+            "--reload",
+        ]
+    else:
+        cmd = [
+            venv_python,
+            "-m",
+            "uvicorn",
+            "api.main:app",
+            "--reload",
+        ]
     
     print(f"Starting server with debugger enabled on port 5678")
     print("Waiting for debugger to attach...")

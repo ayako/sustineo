@@ -77,12 +77,12 @@ export async function loader({ params }: Route.LoaderArgs) {
   // For example, you might want to fetch user data or initial settings
   const design: Design = {
     id: "default",
-    background: "/images/background.jpg",
+    background: "/images/zava-lit-field.jpg",
     default: true,
-    logo: "",
-    title: "BuildEvents",
-    sub_title: "by Contoso",
-    description: "Making Things Happen since 1935",
+    logo: "/images/zava.png",
+    title: "Zava",
+    sub_title: "Your AI Assistant",
+    description: "",
   };
 
   return design;
@@ -395,7 +395,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
         <div className={styles.tools}>
-          {flags.includes("debug") ? (
+          {/* {flags.includes("debug") ? ( */}
             <Actions>
               <Tool
                 icon={<VscClearAll size={18} title={"Reset"} />}
@@ -500,9 +500,9 @@ export default function App({ loaderData }: Route.ComponentProps) {
                 title={"Add Research"}
               />
             </Actions>
-          ) : (
+          {/* ) : (
             <></>
-          )}
+          )} */}
 
           {flags.includes("tools") ? (
             <Settings>

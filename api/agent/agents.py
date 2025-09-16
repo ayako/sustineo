@@ -10,12 +10,12 @@ import prompty
 import prompty.azure  # type: ignore
 from api.agent.decorators import agent
 from api.model import AgentUpdateEvent, Content
-from api.storage import save_image_blobs, save_video_blob
+from api.storage import save_image_blobs, save_video_blob, get_storage_client
 from api.agent.common import execute_foundry_agent, post_request
 from typing import Annotated
 import uuid
 import tweepy
-from api.agent.storage import get_storage_client
+# from api.agent.storage import get_storage_client
 import requests                 # ← keep, still used for the image GET
 
 # Twitter Auth (use environment variables for secrets)

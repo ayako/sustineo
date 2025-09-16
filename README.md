@@ -34,7 +34,7 @@ The dev container automatically handles the complete setup and startup process f
 
 #### In case of script errors on Windows:
 If you run on Windows, you may face to running errors from *.sh.
-Use sed or [normalize-line-endings.sh](./scripts/normalize-line-endings.sh) to convert to LF. Run from repo root:
+Use sed OR [normalize-line-endings.sh](./scripts/normalize-line-endings.sh) to convert to LF. Run from repo root:
 
 ``` using sed
 find scripts -type f -name '*.sh' -print0 | xargs -0 sed -i 's/\r$//'
@@ -43,6 +43,41 @@ or
 ```using normalize-line-endings.sh
 chmod +x normalize-line-endings.sh && (cd scripts && ./normalize-line-endings.sh)
 ```
+
+#### Local testing:
+If you want to test locally, set debugger disabled to avoid connection error with debugpy.
+
+```powershell
+ENABLE_DEBUGGER=false bash scripts/start.sh
+```
+
+#### Default settings:
+
+- **DEFAULT_DESIGN** in [__init__.py](./api/design/__init__.py) stored as default web design.
+
+```__init__.py
+DEFAULT_DESIGN = {
+    "id": "default",
+    "default": False,
+    "background": "/images/zava-lit-field.jpg",
+    "logo": "/images/zava.png",
+    "title": "Zava",
+    "sub_title": "Your AI Assistant",
+    "description": "Default design",
+}
+```
+
+- **defaultUser** in [useuser.tsx](./web/store/useuser.tsx) stored as default user.
+
+```useuser.tsx
+const defaultUser: User = {
+  key: "skyler",
+  name: "Skyler",
+  email: "skyler@example.com",
+  avatar: "/images/people/skyler.png",
+};
+```
+
 
 ### Manual Commands (if needed)
 While the dev container handles these automatically, you can also run these commands manually if needed:
