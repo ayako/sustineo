@@ -32,6 +32,18 @@ The dev container automatically handles the complete setup and startup process f
 - When the container is built, it runs `./scripts/postCreate.sh` to initialize all dependencies
 - When the container starts, it runs `./scripts/start.sh` to launch all services
 
+#### In case of script errors on Windows:
+If you run on Windows, you may face to running errors from *.sh.
+Use sed or [normalize-line-endings.sh](./scripts/normalize-line-endings.sh) to convert to LF. Run from repo root:
+
+``` using sed
+find scripts -type f -name '*.sh' -print0 | xargs -0 sed -i 's/\r$//'
+```
+or
+```using normalize-line-endings.sh
+chmod +x normalize-line-endings.sh && (cd scripts && ./normalize-line-endings.sh)
+```
+
 ### Manual Commands (if needed)
 While the dev container handles these automatically, you can also run these commands manually if needed:
 
