@@ -12,8 +12,8 @@
     "cpus": 4
   },
   "postCreateCommand": "./scripts/postCreate.sh",
-  "postAttachCommand": "./scripts/start.sh",
-  "customizations": {
+  // "postAttachCommand": "./scripts/start.sh",
+  "postAttachCommand": "bash -lc 'ENABLE_DEBUGGER=false ./scripts/start.sh'",  "customizations": {
     "vscode": {
       "extensions": [
 		"GitHub.copilot-chat",

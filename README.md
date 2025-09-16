@@ -51,6 +51,22 @@ If you want to test locally, set debugger disabled to avoid connection error wit
 ENABLE_DEBUGGER=false bash scripts/start.sh
 ```
 
+Set your Azure OpenAI Service endpoint & key and Azure AI Foundry connection string to get values from **AZURE_VOICE_ENDPOINT** and **AZURE_VOICE_KEY** in [api/main.py](./api/main.py), and **FOUNDRY_CONNECTION** in [api/agent/common.py](./api/agent/common.py). 
+You can create .env and load those settings.
+
+```main.py
+client = AsyncAzureOpenAI(
+    azure_endpoint=AZURE_VOICE_ENDPOINT,
+    api_key=AZURE_VOICE_KEY,
+    api_version="2025-04-01-preview",
+)
+```
+```
+project_client = AIProjectClient.from_connection_string(
+    conn_str=FOUNDRY_CONNECTION, credential=creds
+)
+```
+
 #### Default settings:
 
 - **DEFAULT_DESIGN** in [__init__.py](./api/design/__init__.py) stored as default web design.

@@ -141,17 +141,35 @@ async def query_configurations() -> list[Configuration]:
 
 @trace
 async def get_default_configuration() -> Union[Configuration, None]:
-    async with get_cosmos_container(DATABASE_NAME, CONTAINER_NAME) as container:
-        query = "SELECT * FROM c WHERE c.default = true"
-        items = container.query_items(query=query)
-        async for item in items:
-            return Configuration(
-                id=item["id"],
-                name=item["name"],
-                default=item["default"],
-                content=item["content"],
-                tools=item["tools"] if "tools" in item else [],
-            )
+    try:
+        async with get_cosmos_container(DATABASE_NAME, CONTAINER_NAME) as container:
+            query = "SELECT * FROM c WHERE c.default = true"
+            items = container.query_items(query=query)
+            async for item in items:
+                return Configuration(
+                    id=item["id"],
+                    name=item["name"],
+                    default=item["default"],
+                    content=item["content"],
+                    tools=item["tools"] if "tools" in item else [],
+                )
+            return None        
+
+    except Exception as e:
+        print(f"Cannot access CosmosDB, use settings from local.")
+        try:
+            config = await load_prompty_file("zava.prompty", True)
+            if config:
+                print(f"Loaded local fallback configuration: {config.id} - {config.name}")
+                return Configuration(
+                    id=config.id,
+                    name=config.name,
+                    default=True,
+                    content=config.content,
+                    tools=getattr(config, "tools", []) or [],
+                )
+        except Exception as ie:
+            print(f"Failed to load local fallback prompty: {ie}")
         return None
 
 
