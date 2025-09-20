@@ -1,6 +1,6 @@
 from dataclasses import asdict
 from typing import Any
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from fastapi.websockets import WebSocketState
 from pydantic import BaseModel
 
@@ -151,37 +151,59 @@ class FunctionCall(BaseModel):
 
 
 @router.post("/{id}")
-async def execute_agent(id: str, function: FunctionCall):
-    global connections, custom_agents, foundry_agents, function_agents, function_calls
+async def execute_agent(id: str, function: FunctionCall, response: Response):
+    """Execute a function/agent call. Ensure CORS header is present on every response
+    and return a JSON error message on unexpected exceptions so the browser doesn't
+    receive a bare 500 without CORS headers.
+    """
+    # Ensure CORS header is set for this endpoint as a safety net in case middleware
+    # doesn't add it (helps debugging browser CORS errors while developing).
+    response.headers["Access-Control-Allow-Origin"] = "*"
 
-    if len(foundry_agents) == 0:
-        foundry_agents = await get_foundry_agents()
+    try:
+        global connections, custom_agents, foundry_agents, function_agents, function_calls
 
-    if id not in connections:
-        return {"error": "Connection not found"}
+        if len(foundry_agents) == 0:
+            foundry_agents = await get_foundry_agents()
 
-    if function.name in foundry_agents:
-        # execute foundry agent
-        foundry_agent = foundry_agents[function.name]
-        await execute_foundry_agent(
-            foundry_agent.id,
-            function.arguments["additional_instructions"],
-            function.arguments["query"],
-            function_calls,
-            send_agent_status(
-                connection_id=id, name=foundry_agent.name, call_id=function.call_id
-            ),
-        )
-    elif function.name in function_agents:
-        function_agent = function_agents[function.name]
-        functions = dir(agents)
-        if function_agent.id in functions:
-            # execute function agent
-            func = getattr(agents, function_agent.id)
-            args = function.arguments.copy()
-            args["notify"] = send_agent_status(
-                connection_id=id, name=function_agent.name, call_id=function.call_id
+        if id not in connections:
+            response.status_code = 404
+            return {"error": "Connection not found"}
+
+        if function.name in foundry_agents:
+            # execute foundry agent
+            foundry_agent = foundry_agents[function.name]
+            await execute_foundry_agent(
+                foundry_agent.id,
+                function.arguments["additional_instructions"],
+                function.arguments["query"],
+                function_calls,
+                send_agent_status(
+                    connection_id=id, name=foundry_agent.name, call_id=function.call_id
+                ),
             )
-            await func(**args)
+            return {"status": "accepted"}
+        elif function.name in function_agents:
+            function_agent = function_agents[function.name]
+            functions = dir(agents)
+            if function_agent.id in functions:
+                # execute function agent
+                func = getattr(agents, function_agent.id)
+                args = function.arguments.copy()
+                args["notify"] = send_agent_status(
+                    connection_id=id, name=function_agent.name, call_id=function.call_id
+                )
+                await func(**args)
+                return {"status": "accepted"}
+            else:
+                response.status_code = 404
+                return {"error": "Function not found"}
         else:
+            response.status_code = 404
             return {"error": "Function not found"}
+
+    except Exception as e:
+        # Catch-all to avoid unhandled 500 responses without CORS headers
+        print(f"execute_agent error: {e}")
+        response.status_code = 500
+        return {"error": "Internal server error", "detail": str(e)}
