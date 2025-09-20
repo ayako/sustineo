@@ -88,12 +88,13 @@ def load_prompty(contents: str, date: datetime = datetime.now()) -> Prompty:
 
 def load_prompty_config(contents: str, default: bool = False) -> Configuration:
     matter = parse(contents)
-    atttributes = matter.pop("attributes", {})
+    attributes = matter.pop("attributes", {})
     config = Configuration(
-        id=atttributes.get("id", "default"),
-        name=atttributes.get("name", "Default"),
+        id=attributes.get("id", "default"),
+        name=attributes.get("name", "Default"),
         default=default,
         content=contents,
+        tools=attributes.get("tools", []),
     )
     return config
 
@@ -199,16 +200,24 @@ async def get_default_configuration_data(**args) -> Union[DefaultConfiguration, 
         tools: list[SessionTool] = []
         if config.tools is not None and len(config.tools) > 0:
             for tool in config.tools:
+                # Some prompty tool definitions may not include a 'name' key
+                # (Prompty's ToolProperty doesn't accept arbitrary keys). Use
+                # 'id' as fallback for the tool name when 'name' is missing.
+                raw_name = tool.get("name") if isinstance(tool, dict) else None
+                if not raw_name:
+                    raw_name = tool.get("id") if isinstance(tool, dict) else None
+                if not raw_name:
+                    # Skip tools that don't provide an identifier
+                    continue
+
+                params = tool.get("parameters") if isinstance(tool, dict) else []
+
                 tools.append(
                     SessionTool(
                         type="function",
-                        name=tool["name"].strip().lower().replace(" ", "_"),
-                        description=(
-                            tool["description"]
-                            if "description" in tool
-                            else "No Description"
-                        ),
-                        parameters=convert_function_params(tool["parameters"]),
+                        name=raw_name.strip().lower().replace(" ", "_"),
+                        description=(tool.get("description") if isinstance(tool, dict) and "description" in tool else "No Description"),
+                        parameters=convert_function_params(params if params is not None else []),
                     )
                 )
 
