@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
 
 from api.cosmos import get_cosmos_container
-from api.storage import get_storage_client
+from api.storage import get_storage_client, local_storage, public_web_dir
 from api.connection import connections
 from api.model import Update
 from api.telemetry import init_tracing
@@ -114,6 +114,14 @@ async def root():
 
 @app.get("/images/{image_id:path}")
 async def get_image(image_id: str):
+    # Serve from local public folder when storage not configured
+    if local_storage:
+        local_file = public_web_dir / "images" / image_id
+        if not local_file.exists():
+            return Response(status_code=404, content="Image not found")
+        image_bytes = local_file.read_bytes()
+        return Response(content=image_bytes, media_type="image/png")
+
     async with get_storage_client("sustineo") as container_client:
         # get the blob client for the image
         blob_client = container_client.get_blob_client(f"images/{image_id}")
@@ -130,6 +138,13 @@ async def get_image(image_id: str):
 
 @app.get("/videos/{video_id:path}")
 async def get_video(video_id: str):
+    if local_storage:
+        local_file = public_web_dir / "videos" / video_id
+        if not local_file.exists():
+            return Response(status_code=404, content="Video not found")
+        video_bytes = local_file.read_bytes()
+        return Response(content=video_bytes, media_type="video/mp4")
+
     async with get_storage_client("sustineo") as container_client:
         # get the blob client for the video
         blob_client = container_client.get_blob_client(f"videos/{video_id}")
