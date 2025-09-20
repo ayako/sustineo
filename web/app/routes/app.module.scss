@@ -117,3 +117,33 @@
   border: solid 1px color.change($color-text-light, $alpha: 0.5);
   color: $color-text-light;
 }
+
+.sendButton {
+  background-color: var(--accent-color, #3b61c0);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.sendButton:hover {
+  opacity: 0.9;
+}
+
+.sendButton:focus {
+  outline: 2px solid rgba(59, 97, 192, 0.2);
+  outline-offset: 2px;
+}
+
+.sendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

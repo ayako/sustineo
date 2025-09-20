@@ -84,7 +84,14 @@ export const useRealtime = (
 
   const sendRealtime = async (update: Update) => {
     if (voiceRef.current) {
+      try {
+        console.log("sendRealtime: socket readyState=", (voiceRef.current as any).socket?.readyState, "sending update=", update);
+      } catch (e) {
+        // ignore
+      }
       await voiceRef.current.send(update);
+    } else {
+      console.warn("sendRealtime called but voiceRef is not initialized, update not sent", update);
     }
   };
 

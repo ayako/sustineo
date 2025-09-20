@@ -44,7 +44,7 @@ import {
 } from "store/data";
 import VideoImagePicker from "components/videoimagepicker";
 import { HiOutlineVideoCamera } from "react-icons/hi2";
-import { IoCameraOutline } from "react-icons/io5";
+import { IoCameraOutline, IoSend } from "react-icons/io5";
 import FileImagePicker, {
   type FileInputHandle,
 } from "components/fileimagepicker";
@@ -118,6 +118,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
   const [showCapture, setShowCapture] = useState(false);
   const [imageFunctionCall, setImageFunctionCall] =
     useState<ImageFunctionCall>();
+  const [messageInput, setMessageInput] = useState<string>("");
   const filePickerRef = useRef<FileInputHandle>(null);
 
   useEffect(() => {
@@ -362,6 +363,43 @@ export default function App({ loaderData }: Route.ComponentProps) {
     fetchCachedImage(image, setImage);
   };
 
+  const sendMessage = async () => {
+    const text = messageInput?.trim();
+    if (!text) return;
+
+    if (callState !== "call") {
+      // Prevent sending when realtime session is not active
+      alert("Start a voice session (click the microphone) to send messages to the agent.");
+      return;
+    }
+
+    const update: Update = {
+      id: uuidv4(),
+      type: "message",
+      role: "user",
+      content: text,
+    };
+
+    console.log("Attempting to send message", { update, callState });
+    // Optimistically add to the effort list so the UI shows the sent message
+    try {
+      effort?.addEffort(update as any);
+    } catch (err) {
+      console.warn("Failed to add effort entry:", err);
+    }
+
+    // Send over realtime websocket if connected
+    try {
+      await sendRealtime(update as any);
+      console.log("sendRealtime call succeeded");
+    } catch (err) {
+      console.error("Failed to send realtime message:", err);
+      // Optionally, you could fallback to a REST API here.
+    }
+
+    setMessageInput("");
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <main className={styles.home} style={{ backgroundImage: `url(${background})` }}>
@@ -377,11 +415,31 @@ export default function App({ loaderData }: Route.ComponentProps) {
           <div className={styles.effort}>
             <EffortList />
 
-            <input
-              type="text"
-              placeholder={"Send a message"}
-              className={styles.textInput}
-            />
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <input
+                type="text"
+                placeholder={"Send a message"}
+                className={styles.textInput}
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                // Enter key submission disabled
+              />
+              <button
+                className={styles.sendButton}
+                onClick={async () => {
+                  await sendMessage();
+                }}
+                aria-label="Send message"
+                title={
+                  callState === "call"
+                    ? "Send message"
+                    : "Start voice session to send messages"
+                }
+                disabled={callState !== "call" || messageInput.trim() === ""}
+              >
+                <IoSend size={16} />
+              </button>
+            </div>
             <VoiceTool
               onClick={handleVoice}
               callState={callState}

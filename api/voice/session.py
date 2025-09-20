@@ -450,6 +450,7 @@ class RealtimeSession:
             while self.connection.state != WebSocketState.DISCONNECTED:
                 text = await self.connection.receive_text()
                 event = json.loads(text)
+                print(f"Received client event: {event}")
 
                 match event["type"]:
                     case "audio":
@@ -475,6 +476,12 @@ class RealtimeSession:
                                 ),
                             )
                         )
+                        # Request model to create a response for the newly added message
+                        try:
+                            await self.realtime.response.create()
+                            print("Requested response creation from realtime model for user message")
+                        except Exception as e:
+                            print(f"Failed to request response creation: {e}")
 
                     case "interrupt":
                         await self.realtime.send(
