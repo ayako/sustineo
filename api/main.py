@@ -7,10 +7,10 @@ from openai import AsyncAzureOpenAI
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException
 
 from api.cosmos import get_cosmos_container
-from api.storage import get_storage_client, local_storage, public_web_dir
+from api.storage import get_storage_client, local_storage, public_web_dir, save_image_blob
 from api.connection import connections
 from api.model import Update
 from api.telemetry import init_tracing
@@ -159,6 +159,45 @@ async def get_video(video_id: str):
         return Response(content=video_bytes, media_type="video/mp4")
 
 
+@app.post("/api/upload/image")
+async def upload_image(file: UploadFile = File(...)):
+    """
+    Accept an uploaded image file from the user.
+    Saves it to temp storage (or Azure Blob if configured) and returns the public path.
+    The frontend can then pass this path to the agent via conversation context.
+    """
+    try:
+        # Read the uploaded file content
+        contents = await file.read()
+        if not contents:
+            raise HTTPException(status_code=400, detail="Empty file uploaded")
+
+        # Convert to base64 for save_image_blob
+        import base64
+        encoded = base64.b64encode(contents).decode('utf-8')
+
+        # Save using the existing storage function
+        image_path = await save_image_blob(encoded, path=None)
+
+        if local_storage:
+            base_url = os.getenv("PUBLIC_BASE_URL") or "http://localhost:8000"
+            image_path_clean = image_path.lstrip("/")
+            url = f"{base_url}/images/{image_path_clean.split('/', 1)[-1]}"
+        else:
+            storage_url = SUSTINEO_STORAGE.rstrip("/")
+            url = f"{storage_url}/{image_path}"
+
+        return {
+            "url": url,
+            "path": image_path,
+            "image_url": image_path,  # for backward compatibility
+            "message": "Image uploaded successfully"
+        }
+    except Exception as e:
+        print(f"Error uploading image: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
+
+
 @app.websocket("/api/voice/{id}")
 async def voice_endpoint(id: str, websocket: WebSocket):
 
@@ -171,7 +210,7 @@ async def voice_endpoint(id: str, websocket: WebSocket):
             api_version="2025-04-01-preview",
         )
         async with client.beta.realtime.connect(
-            model="gpt-4o-realtime-preview", extra_query={"debug": "elvis"}
+            model="gpt-realtime", extra_query={"debug": "elvis"}
         ) as realtime_client:
 
             # get current username and receive any parameters

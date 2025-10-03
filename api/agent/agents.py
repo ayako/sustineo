@@ -110,8 +110,19 @@ async def gpt_image_generation(
         ]
 
         images = []
+        def get_public_image_url(blob_name: str) -> str:
+            from api.storage import local_storage
+            if local_storage:
+                base_url = os.getenv("PUBLIC_BASE_URL") or "http://localhost:8000"
+                image_path_clean = blob_name.lstrip("/")
+                return f"{base_url}/images/{image_path_clean.split('/', 1)[-1]}"
+            else:
+                storage_url = os.environ.get("SUSTINEO_STORAGE", "").rstrip("/")
+                return f"{storage_url}/{blob_name}"
+
         async for blob_name in save_image_blobs(base64_images):
-            images.append(blob_name)
+            public_url = get_public_image_url(blob_name)
+            images.append(public_url)
             await notify(
                 id="image_generation",
                 status="step completed",
@@ -123,7 +134,7 @@ async def gpt_image_generation(
                             "description": description,
                             "size": size,
                             "quality": quality,
-                            "image_url": blob_name,
+                            "image_url": public_url,
                         }
                     ],
                 ),
@@ -241,18 +252,49 @@ async def gpt_image_edit(
     image: Annotated[
         str,
         "The base64 encoded image to be used as a starting point for the generation. You do not need to include the image itself, you can add a placeholder here since the UI will handle the image upload.",
-    ],
+    ] = "",
     kind: Annotated[
         str,
         'This can be either a file upload or an image that is captured with the users camera. Choose "FILE" if the image is uploaded from the users device. Choose "CAMERA" if the image should be captured with the users camera.',
-    ],
-    notify: AgentUpdateEvent,
+    ] = "FILE",
+    notify: AgentUpdateEvent = None,
+    image_url: Annotated[
+        str,
+        "Optional public URL of an uploaded image to use as the reference. If provided and `image` is empty, the agent will download this URL and use it.",
+    ] = "",
 ) -> list[str]:
     await notify(
         id="image_edit",
         status="run in_progress",
         information="Starting image edit",
     )
+
+    # If an image_url was provided (e.g. user uploaded image), download it and convert to base64
+    if image_url and not image:
+        await notify(
+            id="image_edit",
+            status="step in_progress",
+            information="Downloading reference image",
+        )
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(image_url) as resp:
+                    if resp.status != 200:
+                        await notify(
+                            id="image_edit",
+                            status="step failed",
+                            information=f"Failed to download image: {resp.status}",
+                        )
+                        return []
+                    data = await resp.read()
+                    image = base64.b64encode(data).decode()
+        except Exception as e:
+            await notify(
+                id="image_edit",
+                status="step failed",
+                information=f"Error downloading reference image: {e}",
+            )
+            return []
 
     api_version = "2025-04-01-preview"
     deployment_name = "gpt-image-1"
@@ -286,7 +328,7 @@ async def gpt_image_edit(
         if "error" in response:
             print(json.dumps(response, indent=2))
             await notify(
-                id="image_generation",
+                id="image_edit",
                 status="step failed",
                 information=response["error"],
             )
@@ -326,6 +368,8 @@ async def gpt_image_edit(
                         {
                             "type": "image",
                             "description": description,
+                            "size": size,
+                            "quality": quality,
                             "image_url": blob,
                             "kind": kind,
                         }

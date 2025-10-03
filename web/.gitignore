@@ -4,3 +4,6 @@
 # React Router
 /.react-router/
 /build/
+*.pid
+*.log
+package-lock.json

@@ -363,6 +363,61 @@ export default function App({ loaderData }: Route.ComponentProps) {
     fetchCachedImage(image, setImage);
   };
 
+  const uploadImage = async (file: File): Promise<{ path: string; url: string } | null> => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch(`${API_ENDPOINT}/api/upload/image`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to upload image:', response.statusText);
+        return null;
+      }
+      
+      return await response.json();
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      return null;
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
+    if (callState !== "call") {
+      alert("Start a voice session (click the microphone) to upload images to the agent.");
+      return;
+    }
+
+    const result = await uploadImage(file);
+    if (!result) {
+      alert("Failed to upload image. Please try again.");
+      return;
+    }
+
+    // Send message to agent with reference to uploaded image
+    const update: Update = {
+      id: uuidv4(),
+      type: "message",
+      role: "user",
+      content: `User uploaded a reference image: ${result.url}`,
+    };
+
+    console.log("Sending image reference message", { update, imageUrl: result.url });
+    
+    try {
+      effort?.addEffort(update as any);
+      await sendRealtime(update as any);
+      console.log("Image reference sent successfully");
+      // 画像パスを function call arguments にも渡す
+      setCurrentImage(result.path);
+    } catch (err) {
+      console.error("Failed to send image reference:", err);
+    }
+  };
+
   const sendMessage = async () => {
     const text = messageInput?.trim();
     if (!text) return;
@@ -481,11 +536,21 @@ export default function App({ loaderData }: Route.ComponentProps) {
                 title={"Reset Event Scenario"}
               />
               <Tool
-                icon={<IoCameraOutline size={18} title={"Capture Image"} />}
+                icon={<IoCameraOutline size={18} title={"Upload Image"} />}
                 onClick={() => {
-                  filePickerRef.current?.activateFileInput();
+                  // filePickerRef.current?.activateFileInput();
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = 'image/*';
+                  input.onchange = async (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (file) {
+                      await handleFileUpload(file);
+                    }
+                  };
+                  input.click();
                 }}
-                title={"Capture Image"}
+                title={"Upload Image"}
               />
               <Tool
                 icon={
